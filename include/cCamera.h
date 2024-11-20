@@ -1,34 +1,11 @@
 #pragma once
 
+#include <cGameObject.h>
 #include <glm/glm.hpp>
 #include <glm/ext/matrix_transform.hpp>
 #include <glm/ext/matrix_clip_space.hpp>
 
-class cTransform
-{
-private:
-    glm::vec3 position;
-    glm::vec3 rotation;
-    glm::vec3 scale;
-
-public:
-    cTransform()
-    {
-        position = glm::vec3(0.0f, 0.0f, 0.0f);
-        rotation = glm::vec3(0.0f, 0.0f, 0.0f);
-        scale = glm::vec3(1.0f, 1.0f, 1.0f);
-    }
-
-    glm::vec3 getPosition() { return position; }
-    glm::vec3 getRotation() { return rotation; }
-    glm::vec3 getScale() { return scale; }
-
-    void setPosition(glm::vec3 pos) { position = pos; }
-    void setRotation(glm::vec3 rot) { rotation = rot; }
-    void setScale(glm::vec3 scl) { scale = scl; }
-};
-
-class cCamera: public cTransform
+class cCamera: public cGameObject
 {
 private:
     glm::mat4 viewMatrix;
@@ -51,16 +28,17 @@ public:
 
     void calculateViewMatrix()
     {
+        auto transform = getTransform();
 
         glm::mat4 rotMatrix = glm::mat4(1.0f);
-        rotMatrix = glm::rotate(rotMatrix, glm::radians(getRotation().z), glm::vec3(0.0f, 0.0f, 1.0f));
-        rotMatrix = glm::rotate(rotMatrix, glm::radians(getRotation().y), glm::vec3(0.0f, 1.0f, 0.0f));
-        rotMatrix = glm::rotate(rotMatrix, glm::radians(getRotation().x), glm::vec3(1.0f, 0.0f, 0.0f));
+        rotMatrix = glm::rotate(rotMatrix, glm::radians(transform.getRotation().z), glm::vec3(0.0f, 0.0f, 1.0f));
+        rotMatrix = glm::rotate(rotMatrix, glm::radians(transform.getRotation().y), glm::vec3(0.0f, 1.0f, 0.0f));
+        rotMatrix = glm::rotate(rotMatrix, glm::radians(transform.getRotation().x), glm::vec3(1.0f, 0.0f, 0.0f));
 
         glm::vec3 forward = glm::vec3(rotMatrix * glm::vec4(0.0f, 0.0f, -1.0f, 1.0f));
         glm::vec3 up = glm::vec3(rotMatrix * glm::vec4(0.0f, 1.0f, 0.0f, 1.0f));
 
-        viewMatrix = glm::lookAt(getPosition(), getPosition() + forward, up);
+        viewMatrix = glm::lookAt(transform.getPosition(), transform.getPosition() + forward, up);
 
         // viewMatrix = glm::lookAt(getPosition(), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
         // getPosition() + 
@@ -70,6 +48,9 @@ public:
     {
         projectionMatrix = glm::perspective(glm::radians(fov), aspectRatio, nearPlane, farPlane);
     }
+
+    //get transform ref
+    cTransform &getTransform() { return cGameObject::getTransform(); }
 
     glm::mat4 getViewMatrix() { return viewMatrix; }
     glm::mat4 getProjectionMatrix() { return projectionMatrix; }

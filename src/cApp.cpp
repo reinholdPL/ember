@@ -6,6 +6,54 @@
 
 cApp *cApp::instance = nullptr;
 
+cApp::cApp()
+{
+    sceneCamera.getTransform().setPosition(glm::vec3(-3.0f, 5.0f, 3.0f));
+    sceneCamera.getTransform().setRotation(glm::vec3(-45.0f, -45.0f, 0.0f));
+}
+
+cApp::cApp(const cApp &)
+{
+    sceneCamera.getTransform().setPosition(glm::vec3(-3.0f, 5.0f, 3.0f));
+    sceneCamera.getTransform().setRotation(glm::vec3(-45.0f, -45.0f, 0.0f));
+}
+
+std::string windowTypeToString(WindowType type)
+{
+    switch (type)
+    {
+    case NONE:
+        return "None";
+    case MAIN:
+        return "Main";
+    case ASSETS:
+        return "Assets";
+    case LOG:
+        return "Log";
+    case SCENE_EDITOR:
+        return "Scene Editor";
+    case OBJECT_PROPERTIES:
+        return "Object Properties";
+    default:
+        return "Unknown";
+    }
+};
+
+std::string mouseButtonToString(MouseButton button)
+{
+    switch (button)
+    {
+    case LEFT:
+        return "Left";
+    case RIGHT:
+        return "Right";
+    case MIDDLE:
+        return "Middle";
+    default:
+        return "Unknown";
+    }
+}
+
 static void glfw_error_callback(int error, const char *description)
 {
     fprintf(stderr, "GLFW Error %d: %s\n", error, description);
@@ -66,6 +114,7 @@ void cApp::MaximizeWindow()
 
 void cApp::AddLogEntry(std::string message, glm::vec3 color)
 {
+    _logFrameShouldBeScrolled = true;
     logEntries.push_back(sLogEntry(message, glfwGetTime(), color));
     // display in console
     logEntries.back().display();
@@ -294,6 +343,7 @@ int cApp::InitOpenGL()
 
 void cApp::redrawScene()
 {
+
     // create sceneBuffer
 
     glViewport(0, 0, sceneBuffer->getSize().x, sceneBuffer->getSize().y);
@@ -306,8 +356,6 @@ void cApp::redrawScene()
     glClearColor(0.45f, 0.55f, 0.60f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    sceneCamera.setPosition(glm::vec3(-3.0f, 5.0f, 3.0f));
-    sceneCamera.setRotation(glm::vec3(-45.0f, -45.0f, 0.0f));
     sceneCamera.setAspectRatio(sceneBuffer->getAspectRatio());
     sceneCamera.calculateProjectionMatrix();
     sceneCamera.calculateViewMatrix();
@@ -370,9 +418,14 @@ void cApp::ImguiDrawSceneFrame()
 
     ImGui::Begin("Scene");
     {
+
         // remove margins
 
         ImGui::BeginChild("GameRender");
+        if (ImGui::IsWindowHovered())
+        {
+            _hoveredWindow = WindowType::SCENE_EDITOR;
+        }
 
         float width = ImGui::GetContentRegionAvail().x;
         float height = ImGui::GetContentRegionAvail().y;
@@ -398,22 +451,208 @@ void cApp::ImguiDrawSceneFrame()
     ImGui::PopStyleVar();
 }
 
-void cApp::ImguiCheckIfMouseIsOver()
+void cApp::ImguiDrawSceneHierarchyFrame()
 {
-    // if (ImGui::IsWindowHovered())
-    // {
-    //     // std::cout << "Mouse is over" << std::endl;
-    // }
+    ImGui::Begin("Scene hierarchy");
 
+    // hovered window text
 
-    // ImVec2 mousePos = ImGui::GetMousePos();
-	// 			ImVec2 contentStart = ImGui::GetCursorScreenPos();
-	// 			ImVec2 contentSize = ImGui::GetContentRegionAvail();
-	// 			ImVec2 localMousePos = ImVec2(mousePos.x - contentStart.x, mousePos.y - contentStart.y);
+    ImGui::Text("Mouse is over content: %s", windowTypeToString(_hoveredWindow).c_str());
+    ImGui::Text("%d", _hoveredWindow);
 
-	// 			// ImGui::Text("Mouse Position (Local): (%.1f, %.1f)", localMousePos.x, localMousePos.y);
-	// 			// ImGui::Text("Content Region Size: (%.1f, %.1f)", contentSize.x, contentSize.y);
+    ImGui::End();
+}
 
-	// 			bool mouseIsOverContent = localMousePos.x >= 0 && localMousePos.y >= 0 && localMousePos.x < contentSize.x && localMousePos.y < contentSize.y;
-	// 			ImGui::Text("Mouse is over content: %s", mouseIsOverContent ? "true" : "false");
+void cApp::handleMouse()
+{
+
+    // get this frame mouse position
+    double xpos, ypos;
+    glm::vec2 mousePosition, mouseDelta;
+    glfwGetCursorPos(window, &xpos, &ypos);
+    mousePosition = glm::vec2(xpos, ypos);
+    if (lastMousePosition.x == -1)
+    {
+        lastMousePosition = mousePosition;
+        return; // this was first frame, so we don't care
+    }
+
+    mouseDelta = mousePosition - lastMousePosition;
+
+    lastMousePosition = mousePosition;
+
+    // ------ mouse buttons
+    for (unsigned int btn = 0; btn < 3; btn++)
+    {
+        if (glfwGetMouseButton(window, btn) == GLFW_PRESS)
+        {
+            // check if bit 0 is set
+            if ((lastMouseButtonState & (1 << btn)) == 0)
+            {
+                lastMouseButtonState |= (1 << btn);
+                handeMouseButton((MouseButton)btn, true);
+            }
+        }
+        else
+        { // released
+            if ((lastMouseButtonState & (1 << btn)))
+            {
+                lastMouseButtonState &= ~(1 << btn);
+                handeMouseButton((MouseButton)btn, false);
+            }
+        }
+    }
+
+    // mouse movement
+
+    if (mouseDelta.x != 0 || mouseDelta.y != 0)
+    {
+        handleMouseMovement(mouseDelta);
+    }
+}
+
+void cApp::handeMouseButton(MouseButton button, bool pressed)
+{
+    AddLogEntry("Mouse button " + mouseButtonToString(button) + " " + (pressed ? "pressed" : "released"), glm::vec3(0.0f, 1.0f, 0.0f));
+
+    if (button == _draggedMouseButton && _dragging)
+    {
+        if (!pressed)
+        {
+            _dragging = false;
+            _draggedWindow = WindowType::NONE;
+            _draggedMouseButton = MouseButton::BTN_NONE;
+            AddLogEntry("drag end!", glm::vec3(0.0f, 1.0f, 0.0f));
+
+            handleDragEnd();
+        }
+    }
+}
+
+void cApp::handleMouseMovement(glm::vec2 delta)
+{
+    if (lastMouseButtonState && !_dragging)
+    { // any mouse button is pressed
+        _draggedWindow = _hoveredWindow;
+        _dragging = true;
+
+        // get first pressed button
+        for (unsigned int btn = 0; btn < 3; btn++)
+        {
+            if (lastMouseButtonState & (1 << btn))
+            {
+                _draggedMouseButton = (MouseButton)btn;
+                break;
+            }
+        }
+
+        handleDragStart(delta);
+
+        AddLogEntry("drag start! button = " + mouseButtonToString(_draggedMouseButton), glm::vec3(0.0f, 1.0f, 0.0f));
+    }
+
+    if (_dragging)
+    {
+        handleMouseDrag(delta);
+    }
+}
+
+void cApp::handleMouseDrag(glm::vec2 delta)
+{
+    // AddLogEntry("dragging!", glm::vec3(0.0f, 1.0f, 0.0f));
+
+    // if drag window is scene
+    if (_draggedWindow == WindowType::SCENE_EDITOR)
+    {
+        glm::vec3 currentRotation = sceneCamera.getTransform().getRotation();
+        currentRotation.x -= delta.y / 5.0f;
+        currentRotation.x = glm::clamp(currentRotation.x, -90.0f, 90.0f);
+
+        currentRotation.y -= delta.x / 5.0f;
+        sceneCamera.getTransform().setRotation(currentRotation);
+    }
+}
+
+void cApp::handleDragStart(glm::vec2 delta)
+{
+    // AddLogEntry("drag start!", glm::vec3(0.0f, 1.0f, 0.0f));
+
+    // lock mouse cursor
+    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+}
+
+void cApp::handleDragEnd()
+{
+    // AddLogEntry("drag end!", glm::vec3(0.0f, 1.0f, 0.0f));
+    //unlock mouse cursor
+    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+}
+
+void cApp::handleKeyboard()
+{
+    // if dragging, right mouse button and window is scene
+    if (_dragging && _draggedMouseButton == MouseButton::RIGHT && _draggedWindow == WindowType::SCENE_EDITOR)
+    {
+        // move camera left according to camera orientation
+        glm::vec3 position = sceneCamera.getTransform().getPosition();
+        glm::vec3 rotation = sceneCamera.getTransform().getRotation();
+
+        if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
+        {
+            position.x -= 0.001f * sin(glm::radians(rotation.y + 90));
+            position.z -= 0.001f * cos(glm::radians(rotation.y + 90));
+            sceneCamera.getTransform().setPosition(position);
+        }
+
+        if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
+        {
+            position.x += 0.001f * sin(glm::radians(rotation.y + 90));
+            position.z += 0.001f * cos(glm::radians(rotation.y + 90));
+            sceneCamera.getTransform().setPosition(position);
+        }
+
+        // on press W move FORWARD in direction of camera
+        if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
+        {
+            position.x -= 0.001f * sin(glm::radians(rotation.y));
+            position.z -= 0.001f * cos(glm::radians(rotation.y));
+            position.y += 0.001f * sin(glm::radians(rotation.x));
+            sceneCamera.getTransform().setPosition(position);
+        }
+
+        // on press S move BACKWARD in direction of camera
+        if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
+        {
+            position.x += 0.001f * sin(glm::radians(rotation.y));
+            position.z += 0.001f * cos(glm::radians(rotation.y));
+            position.y -= 0.001f * sin(glm::radians(rotation.x));
+            sceneCamera.getTransform().setPosition(position);
+        }
+
+        // key  q - move up camera , e - move down camera
+        if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS)
+        {
+            position.y += 0.001f;
+            sceneCamera.getTransform().setPosition(position);
+        }
+
+        if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS)
+        {
+            position.y -= 0.001f;
+            sceneCamera.getTransform().setPosition(position);
+        }
+    }
+}
+
+void cApp::ImguiDrawObjectProperties()
+{
+
+    ImGui::Begin("Object properties");
+    {
+        // ImGui::Text("Mouse is over content: %s", ImGui::IsWindowHovered() ? "true" : "false");
+
+        // print camera position and rotation
+        ImGui::Text("Camera position: %f %f %f", sceneCamera.getTransform().getPosition().x, sceneCamera.getTransform().getPosition().y, sceneCamera.getTransform().getPosition().z);
+        ImGui::Text("Camera rotation: %f %f %f", sceneCamera.getTransform().getRotation().x, sceneCamera.getTransform().getRotation().y, sceneCamera.getTransform().getRotation().z);
+    }
 }

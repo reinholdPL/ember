@@ -94,9 +94,16 @@ int main(int, char **)
 
 	while (!glfwWindowShouldClose(app->getWindow()))
 	{
+		app->handleMouse();
+		app->handleKeyboard();
+
+		app->setHoveredWindow(WindowType::NONE);
 		app->redrawScene();
 
 		glfwPollEvents();
+
+		// get mouse position
+
 		if (glfwGetWindowAttrib(app->getWindow(), GLFW_ICONIFIED) != 0)
 		{
 			ImGui_ImplGlfw_Sleep(10);
@@ -117,24 +124,39 @@ int main(int, char **)
 			ImGui::End();
 
 			ImGui::Begin("Log");
+
+			// scroll this to bottom
+
 			// write last 10 log entries
 			std::vector<sLogEntry> *logEntries = app->getLogEntries();
 			// write all log entries
-			for (int i = 0; i < logEntries->size(); i++)
+			for (unsigned long i = 0; i < logEntries->size(); i++)
 			{
 				ImGui::TextColored(ImVec4((*logEntries)[i].color.r, (*logEntries)[i].color.g, (*logEntries)[i].color.b, 1.0f), "[%f] %s", (*logEntries)[i].time, (*logEntries)[i].message.c_str());
 			}
-			ImGui::End();
 
-			ImGui::Begin("Scene hierarchy");
-			ImGui::End();
+			app->getLogFrameShouldBeScrolled()?ImGui::SetScrollHereY(1.0f):void(0);
 
-			ImGui::Begin("Object properties");
-			{
-				ImGui::Text("Mouse is over content: %s", ImGui::IsWindowHovered() ? "true" : "false");
+			if (app->getLogFrameShouldBeScrolled()) {
+				ImGui::SetScrollHereY(1.0f);
+				app->setLogFrameShouldBeScrolled(false);
 			}
 
 			ImGui::End();
+
+			app->ImguiDrawSceneHierarchyFrame();
+
+			app->ImguiDrawObjectProperties();
+
+			ImGui::End();
+
+			// ImGui::Begin("Testing");
+			// {
+			// 	ImGui::Text("Hello, world!");
+			// 	if (ImGui::Button("Press me!"))
+			// 		app->AddLogEntry("Button pressed", glm::vec3(0.0f, 1.0f, 0.0f));
+			// }
+			// ImGui::End();
 		}
 
 		ImGui::Render();
