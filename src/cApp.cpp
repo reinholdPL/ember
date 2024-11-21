@@ -562,7 +562,7 @@ void cApp::handleMouseDrag(glm::vec2 delta)
     // AddLogEntry("dragging!", glm::vec3(0.0f, 1.0f, 0.0f));
 
     // if drag window is scene
-    if (_draggedWindow == WindowType::SCENE_EDITOR)
+    if (_draggedWindow == WindowType::SCENE_EDITOR && _draggedMouseButton == MouseButton::RIGHT)
     {
         glm::vec3 currentRotation = sceneCamera.getTransform().getRotation();
         currentRotation.x -= delta.y / 5.0f;
@@ -578,13 +578,14 @@ void cApp::handleDragStart(glm::vec2 delta)
     // AddLogEntry("drag start!", glm::vec3(0.0f, 1.0f, 0.0f));
 
     // lock mouse cursor
-    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+    if (_draggedMouseButton == MouseButton::RIGHT)
+        glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 }
 
 void cApp::handleDragEnd()
 {
     // AddLogEntry("drag end!", glm::vec3(0.0f, 1.0f, 0.0f));
-    //unlock mouse cursor
+    // unlock mouse cursor
     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
 }
 
@@ -599,46 +600,46 @@ void cApp::handleKeyboard()
 
         if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
         {
-            position.x -= 0.001f * sin(glm::radians(rotation.y + 90));
-            position.z -= 0.001f * cos(glm::radians(rotation.y + 90));
+            position.x -= _sceneMoveSpeed * sin(glm::radians(rotation.y + 90));
+            position.z -= _sceneMoveSpeed * cos(glm::radians(rotation.y + 90));
             sceneCamera.getTransform().setPosition(position);
         }
 
         if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
         {
-            position.x += 0.001f * sin(glm::radians(rotation.y + 90));
-            position.z += 0.001f * cos(glm::radians(rotation.y + 90));
+            position.x += _sceneMoveSpeed * sin(glm::radians(rotation.y + 90));
+            position.z += _sceneMoveSpeed * cos(glm::radians(rotation.y + 90));
             sceneCamera.getTransform().setPosition(position);
         }
 
         // on press W move FORWARD in direction of camera
         if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
         {
-            position.x -= 0.001f * sin(glm::radians(rotation.y));
-            position.z -= 0.001f * cos(glm::radians(rotation.y));
-            position.y += 0.001f * sin(glm::radians(rotation.x));
+            position.x -= _sceneMoveSpeed * sin(glm::radians(rotation.y));
+            position.z -= _sceneMoveSpeed * cos(glm::radians(rotation.y));
+            position.y += _sceneMoveSpeed * sin(glm::radians(rotation.x));
             sceneCamera.getTransform().setPosition(position);
         }
 
         // on press S move BACKWARD in direction of camera
         if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
         {
-            position.x += 0.001f * sin(glm::radians(rotation.y));
-            position.z += 0.001f * cos(glm::radians(rotation.y));
-            position.y -= 0.001f * sin(glm::radians(rotation.x));
+            position.x += _sceneMoveSpeed * sin(glm::radians(rotation.y));
+            position.z += _sceneMoveSpeed * cos(glm::radians(rotation.y));
+            position.y -= _sceneMoveSpeed * sin(glm::radians(rotation.x));
             sceneCamera.getTransform().setPosition(position);
         }
 
         // key  q - move up camera , e - move down camera
-        if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS)
+        if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS)
         {
-            position.y += 0.001f;
+            position.y += _sceneMoveSpeed;
             sceneCamera.getTransform().setPosition(position);
         }
 
-        if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS)
+        if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS)
         {
-            position.y -= 0.001f;
+            position.y -= _sceneMoveSpeed;
             sceneCamera.getTransform().setPosition(position);
         }
     }
