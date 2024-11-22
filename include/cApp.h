@@ -13,6 +13,8 @@
 #include "utils.h"
 #include "cCamera.h"
 
+#include "cMesh.h"
+
 enum WindowType
 {
     NONE,
@@ -58,10 +60,11 @@ private:
     cFrameBuffer *sceneBuffer;
 
     // test
+    cMesh mesh;
     unsigned int VBO, VAO, EBO;
     unsigned int shaderProgram, gridProgram;
     unsigned int gridVAO, gridVBO;
-    double _sceneMoveSpeed = 0.1;
+    double _sceneMoveSpeed = 0.001;
     WindowType _hoveredWindow = WindowType::NONE;
     std::vector<float> gridVertices;
     bool _logFrameShouldBeScrolled = false;

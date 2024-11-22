@@ -70,6 +70,11 @@ void cApp::Init()
     InitGLFW();
     InitIMGUI();
     InitOpenGL();
+
+    mesh.loadObj("assets/meshes/sphere.obj");
+    mesh.genBuffers();
+
+    // exit(1);
 }
 
 void cApp::CenterWindow()
@@ -300,7 +305,7 @@ int cApp::InitOpenGL()
     gridProgram = createShader(gridVertexShaderSource, gridFragmentShaderSource);
 
     float gridWidth = 20.0f;
-    int divisions = 100;
+    int divisions = 20;
     float step = gridWidth / divisions; // Grid step size
 
     // Horizontal lines
@@ -405,8 +410,8 @@ void cApp::redrawScene()
     glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(sceneCamera.getProjectionMatrix()));
     glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(sceneCamera.getViewMatrix()));
 
-    glBindVertexArray(VAO);
-    glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);
+    glBindVertexArray(mesh.getVAO());
+    glDrawElements(GL_TRIANGLES, mesh.getFacesCount()*3, GL_UNSIGNED_INT, 0);
 
     sceneBuffer->Unbind();
 }
