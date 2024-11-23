@@ -71,7 +71,7 @@ void cApp::Init()
     InitIMGUI();
     InitOpenGL();
 
-    mesh.loadObj("assets/meshes/sphere.obj");
+    mesh.loadObj("assets/meshes/barrel.obj");
     mesh.genBuffers();
 
     // exit(1);
@@ -138,15 +138,19 @@ int cApp::InitGLFW()
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE); // 3.2+ only
     // glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);            // 3.0+ only
 
+
     window = glfwCreateWindow(1300, 1000, "ember3", nullptr, nullptr);
     if (window == nullptr)
         return 1;
+
+    glfwSwapInterval(1); // Enable vsync
+    
 
     glfwMakeContextCurrent(window);
 
     // CenterWindow();
     MaximizeWindow();
-    glfwSwapInterval(1); // Enable vsync
+
     return 0;
 }
 
@@ -411,7 +415,8 @@ void cApp::redrawScene()
     glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(sceneCamera.getViewMatrix()));
 
     glBindVertexArray(mesh.getVAO());
-    glDrawElements(GL_TRIANGLES, mesh.getFacesCount()*3, GL_UNSIGNED_INT, 0);
+    // glDrawElements(GL_TRIANGLES, mesh.getFacesCount()*3, GL_UNSIGNED_INT, 0);
+    glDrawArrays(GL_TRIANGLES, 0, mesh.getFacesCount() * 3);
 
     sceneBuffer->Unbind();
 }
@@ -660,5 +665,8 @@ void cApp::ImguiDrawObjectProperties()
         // print camera position and rotation
         ImGui::Text("Camera position: %f %f %f", sceneCamera.getTransform().getPosition().x, sceneCamera.getTransform().getPosition().y, sceneCamera.getTransform().getPosition().z);
         ImGui::Text("Camera rotation: %f %f %f", sceneCamera.getTransform().getRotation().x, sceneCamera.getTransform().getRotation().y, sceneCamera.getTransform().getRotation().z);
+
+        //fps
+        ImGui::Text("FPS: %f", ImGui::GetIO().Framerate);
     }
 }

@@ -21,6 +21,7 @@ class cMesh
 {
 private:
     std::vector<glm::vec3> _vertices;
+    std::vector<glm::vec3> _normals;
     std::vector<sFace> _faces;
     unsigned int VBO, VAO, EBO;
 

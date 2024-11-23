@@ -33,6 +33,17 @@ int cMesh::loadObj(std::string path)
             _vertices.push_back(vertex);
         }
 
+        if (splitted[0] == "vn") // normal
+        {
+            glm::vec3 normal;
+            normal.x = std::stof(splitted[1]);
+            normal.y = std::stof(splitted[2]);
+            normal.z = std::stof(splitted[3]);
+            //make sure it's normalized
+            normal = glm::normalize(normal);
+            _normals.push_back(normal);
+        }
+
         if (splitted[0] == "f") // face
         {
             sFace face;
@@ -51,6 +62,7 @@ int cMesh::loadObj(std::string path)
 
     // print vertices count
     std::cout << "Loaded " << _vertices.size() << " vertices" << std::endl;
+    std::cout << "Loaded " << _normals.size() << " normals" << std::endl;
     std::cout << "Loaded " << _faces.size() << " faces" << std::endl;
 
     return 0;
@@ -65,25 +77,45 @@ void cMesh::genBuffers()
     // Bind VAO
     glBindVertexArray(VAO);
 
-    unsigned int verticeIndexes[_faces.size() * 3];
+    // 3 bytes for vertex, 3 for normal, 2 for uv
+    // 8 floats per vertex
+    float vboData[_faces.size() * 3 * 8];
     for (int i = 0; i < _faces.size(); i++)
     {
-        verticeIndexes[i * 3] = _faces[i].vertices[0].vertex_index;
-        verticeIndexes[i * 3 + 1] = _faces[i].vertices[1].vertex_index;
-        verticeIndexes[i * 3 + 2] = _faces[i].vertices[2].vertex_index;
+        for (int j = 0; j < 3; j++)
+        {
+            vboData[i * 24 + j * 8] = _vertices[_faces[i].vertices[j].vertex_index].x;
+            vboData[i * 24 + j * 8 + 1] = _vertices[_faces[i].vertices[j].vertex_index].y;
+            vboData[i * 24 + j * 8 + 2] = _vertices[_faces[i].vertices[j].vertex_index].z;
+
+            vboData[i * 24 + j * 8 + 3] = _normals[_faces[i].vertices[j].normal_index].x;
+            vboData[i * 24 + j * 8 + 4] = _normals[_faces[i].vertices[j].normal_index].y;
+            vboData[i * 24 + j * 8 + 5] = _normals[_faces[i].vertices[j].normal_index].z;
+
+            vboData[i * 24 + j * 8 + 6] = 0.0f;
+            vboData[i * 24 + j * 8 + 7] = 0.0f;
+        }
     }
+
+    // unsigned int indices[_faces.size() * 3];
 
     // Bind and set VBO
     glBindBuffer(GL_ARRAY_BUFFER, VBO);
-    glBufferData(GL_ARRAY_BUFFER, _vertices.size() * sizeof(glm::vec3), &_vertices[0], GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, _faces.size() * 3 * 8 * sizeof(float), vboData, GL_STATIC_DRAW);
 
     // Bind and set EBO
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, _faces.size() * 3 * sizeof(float), verticeIndexes, GL_STATIC_DRAW);
+    // glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+    // glBufferData(GL_ELEMENT_ARRAY_BUFFER, _faces.size() * 3 * sizeof(unsigned int), &_faces[0], GL_STATIC_DRAW);
 
     // Define vertex attributes
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void *)0); // Positions
+    // Position
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(0);
+    // Normal
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(3 * sizeof(float)));
+    glEnableVertexAttribArray(1);
+    // UV
+    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(6 * sizeof(float)));
 
     // Unbind VAO (optional)
     glBindVertexArray(0);
